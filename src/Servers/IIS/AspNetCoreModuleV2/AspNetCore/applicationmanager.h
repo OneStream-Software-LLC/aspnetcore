@@ -31,7 +31,7 @@ public:
 
     VOID
     ShutDown();
-    
+
     APPLICATION_MANAGER(HMODULE hModule, IHttpServer& pHttpServer) :
                             m_pApplicationInfoHash(NULL),
                             m_fDebugInitialize(FALSE),
@@ -39,6 +39,16 @@ public:
                             m_handlerResolver(hModule, pHttpServer)
     {
         InitializeSRWLock(&m_srwLock);
+    }
+
+    std::chrono::milliseconds GetShutdownDelay() const
+    {
+        return m_handlerResolver.GetShutdownDelay();
+    }
+
+    bool IsCommandLineLaunch() const
+    {
+        return m_pHttpServer.IsCommandLineLaunch();
     }
 
 private:

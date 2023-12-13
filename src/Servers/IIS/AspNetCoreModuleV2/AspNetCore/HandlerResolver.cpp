@@ -22,7 +22,8 @@ const PCWSTR HandlerResolver::s_pwzAspnetcoreOutOfProcessRequestHandlerName = L"
 HandlerResolver::HandlerResolver(HMODULE hModule, const IHttpServer &pServer)
     : m_hModule(hModule),
       m_pServer(pServer),
-      m_loadedApplicationHostingModel(HOSTING_UNKNOWN)
+      m_loadedApplicationHostingModel(HOSTING_UNKNOWN),
+      m_shutdownDelay()
 {
     InitializeSRWLock(&m_requestHandlerLoadLock);
 }
@@ -169,6 +170,8 @@ HandlerResolver::GetApplicationFactory(const IHttpApplication& pApplication, con
 
     m_loadedApplicationHostingModel = options.QueryHostingModel();
     m_loadedApplicationId = pApplication.GetApplicationId();
+    m_shutdownDelay = options.QueryShutdownDelay();
+
     RETURN_IF_FAILED(LoadRequestHandlerAssembly(pApplication, shadowCopyPath, options, pApplicationFactory, errorContext));
 
     return S_OK;
@@ -187,6 +190,11 @@ APP_HOSTING_MODEL HandlerResolver::GetHostingModel()
     SRWExclusiveLock lock(m_requestHandlerLoadLock);
 
     return m_loadedApplicationHostingModel;
+}
+
+std::chrono::milliseconds HandlerResolver::GetShutdownDelay() const
+{
+    return m_shutdownDelay;
 }
 
 HRESULT

@@ -83,6 +83,12 @@ public:
         return m_strShadowCopyingDirectory;
     }
 
+    std::chrono::milliseconds
+        QueryShutdownDelay() const noexcept
+    {
+        return m_fShutdownDelay;
+    }
+
     ShimOptions(const ConfigurationSource &configurationSource);
 
 private:
@@ -97,4 +103,5 @@ private:
     bool                           m_fexperimentalEnableShadowCopying;
     bool                           m_fCleanShadowCopyDirectory;
     std::wstring                   m_strShadowCopyingDirectory;
+    std::chrono::milliseconds      m_fShutdownDelay;
 };
