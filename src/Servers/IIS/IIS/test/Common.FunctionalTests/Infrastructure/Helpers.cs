@@ -261,22 +261,6 @@ namespace Microsoft.AspNetCore.Server.IIS.FunctionalTests
             siteElement.Add(rootApplication);
 
             return rootApplicationDirectory.FullName;
-        }
-    }
-
-    public static async Task AssertRecycledAsync(this IISDeploymentResult deploymentResult, Func<Task> verificationAction = null)
-    {
-        if (deploymentResult.DeploymentParameters.HostingModel != HostingModel.InProcess)
-        {
-            throw new NotSupportedException();
-        }
-
-        deploymentResult.AssertWorkerProcessStop();
-        if (deploymentResult.DeploymentParameters.ServerType == ServerType.IIS)
-        {
-            verificationAction = verificationAction ?? (() => deploymentResult.AssertStarts());
-            await verificationAction();
-        }
     }
 
     // Don't use with IISExpress, recycle isn't a valid operation
@@ -287,91 +271,5 @@ namespace Microsoft.AspNetCore.Server.IIS.FunctionalTests
         Assert.NotNull(appPool);
         appPool.Recycle();
     }
-
-    public static IEnumerable<object[]> ToTheoryData<T>(this Dictionary<string, T> dictionary)
-    {
-        return dictionary.Keys.Select(k => new[] { k });
-    }
-
-    public static string GetExpectedLogName(IISDeploymentResult deploymentResult, string logFolderPath)
-    {
-        var startTime = deploymentResult.HostProcess.StartTime.ToUniversalTime();
-
-        if (deploymentResult.DeploymentParameters.HostingModel == HostingModel.InProcess)
-        {
-            return Path.Combine(logFolderPath, $"std_{startTime.Year}{startTime.Month:D2}" +
-            $"{startTime.Day:D2}{startTime.Hour:D2}" +
-            $"{startTime.Minute:D2}{startTime.Second:D2}_" +
-            $"{deploymentResult.HostProcess.Id}.log");
-        }
-        else
-        {
-            return Directory.GetFiles(logFolderPath).Single();
-        }
-    }
-
-    public static void ModifyFrameworkVersionInRuntimeConfig(IISDeploymentResult deploymentResult)
-    {
-        var path = Path.Combine(deploymentResult.ContentRoot, "InProcessWebSite.runtimeconfig.json");
-        dynamic depsFileContent = JsonConvert.DeserializeObject(File.ReadAllText(path));
-        depsFileContent["runtimeOptions"]["framework"]["version"] = "2.9.9";
-        var output = JsonConvert.SerializeObject(depsFileContent);
-        File.WriteAllText(path, output);
-    }
-
-    public static void AllowNoLogs(this IISDeploymentResult deploymentResult)
-    {
-        File.AppendAllText(
-            Path.Combine(deploymentResult.DeploymentParameters.PublishedApplicationRootPath, "aspnetcore-debug.log"),
-            "Running test allowed log file to be empty." + Environment.NewLine);
-    }
-
-    public static string ReadAllTextFromFile(string filename, ILogger logger)
-    {
-        try
-        {
-            return File.ReadAllText(filename);
-        }
-        catch (Exception ex)
-        {
-            // check if there is a dotnet.exe, iisexpress.exe, or w3wp.exe processes still running.
-            var hostingProcesses = Process.GetProcessesByName("dotnet")
-                .Concat(Process.GetProcessesByName("iisexpress"))
-                .Concat(Process.GetProcessesByName("w3wp"));
-
-            logger.LogError($"Could not read file content. Exception message {ex.Message}");
-            logger.LogError("Current hosting exes running:");
-
-            foreach (var hostingProcess in hostingProcesses)
-            {
-                logger.LogError($"{hostingProcess.ProcessName} pid: {hostingProcess.Id} hasExited: {hostingProcess.HasExited.ToString()}");
-            }
-            throw;
-        }
-    }
-
-    public static string CreateEmptyApplication(XElement config, string contentRoot)
-    {
-        var siteElement = config
-            .RequiredElement("system.applicationHost")
-            .RequiredElement("sites")
-            .RequiredElement("site");
-
-        var application = siteElement
-            .RequiredElement("application");
-
-        var rootApplicationDirectory = new DirectoryInfo(contentRoot + "rootApp");
-        rootApplicationDirectory.Create();
-
-        File.WriteAllText(Path.Combine(rootApplicationDirectory.FullName, "web.config"), "<configuration></configuration>");
-
-        var rootApplication = new XElement(application);
-        rootApplication.SetAttributeValue("path", "/");
-        rootApplication.RequiredElement("virtualDirectory")
-            .SetAttributeValue("physicalPath", rootApplicationDirectory.FullName);
-
-        siteElement.Add(rootApplication);
-
-        return rootApplicationDirectory.FullName;
     }
 }
